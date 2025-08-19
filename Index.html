@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Diario Salud</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f5f5f5;
+    }
+    header {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .color-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      cursor: pointer;
+    }
+    #entryBox {
+      width: 90%;
+      margin: 20px auto;
+      display: block;
+      padding: 10px;
+      font-size: 16px;
+      border-left: 8px solid #ccc;
+      min-height: 100px;
+      background: #fff;
+    }
+    button {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+    }
+    #records {
+      padding: 20px;
+    }
+    .record {
+      background: #fff;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-left: 8px solid gray;
+    }
+    .icon {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      width: 50px; height: 50px;
+      background: #2196F3;
+      border-radius: 50%;
+      color: #fff;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="color-btn" style="background:yellow;" onclick="setColor('yellow')"></div>
+    <div class="color-btn" style="background:lightgreen;" onclick="setColor('lightgreen')"></div>
+    <div class="color-btn" style="background:lightblue;" onclick="setColor('lightblue')"></div>
+    <div class="color-btn" style="background:plum;" onclick="setColor('plum')"></div>
+  </header>
+
+  <textarea id="entryBox" placeholder="Escribe tu nota aquí..."></textarea>
+  <button onclick="saveEntry()">Guardar</button>
+  <button onclick="downloadEntries()">Descargar Notas</button>
+
+  <div id="records" style="display:none;"></div>
+
+  <div class="icon" onclick="toggleRecords()">📖</div>
+
+  <script>
+    let currentColor = 'gray';
+
+    function setColor(color) {
+      currentColor = color;
+      document.getElementById('entryBox').style.borderLeft = "8px solid " + color;
+    }
+
+    function saveEntry() {
+      const text = document.getElementById('entryBox').value.trim();
+      if (!text) return alert("Escribe algo antes de guardar.");
+      const date = new Date().toLocaleString();
+      const entry = { text, date, color: currentColor };
+
+      let entries = JSON.parse(localStorage.getItem("diario")) || [];
+      entries.push(entry);
+      localStorage.setItem("diario", JSON.stringify(entries));
+
+      document.getElementById('entryBox').value = "";
+      alert("Nota guardada!");
+      showEntries();
+    }
+
+    function showEntries() {
+      let recordsDiv = document.getElementById('records');
+      recordsDiv.innerHTML = "";
+      let entries = JSON.parse(localStorage.getItem("diario")) || [];
+      entries.forEach(e => {
+        let div = document.createElement("div");
+        div.className = "record";
+        div.style.borderLeft = "8px solid " + e.color;
+        div.innerHTML = `<b>${e.date}</b><br>${e.text}`;
+        recordsDiv.appendChild(div);
+      });
+    }
+
+    function toggleRecords() {
+      let recordsDiv = document.getElementById('records');
+      if (recordsDiv.style.display === "none") {
+        showEntries();
+        recordsDiv.style.display = "block";
+      } else {
+        recordsDiv.style.display = "none";
+      }
+    }
+
+    function downloadEntries() {
+      let entries = JSON.parse(localStorage.getItem("diario")) || [];
+      if (entries.length === 0) {
+        alert("No hay notas guardadas.");
+        return;
+      }
+      let content = entries.map(e => `[${e.date}] (${e.color})\n${e.text}\n`).join("\n");
+      let blob = new Blob([content], { type: "text/plain" });
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement("a");
+      a.href = url;
+      a.download = "mi_diario.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
