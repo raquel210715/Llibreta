@@ -213,18 +213,27 @@ function toLocal(ts){ if(!ts) return {iso:'', pretty:'(sin fecha)'}; const d=ts.
 
 function escapeHtml(str){return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
 
-function applyFilters(list){
-  const from = document.getElementById('fromDate').value?new Date(document.getElementById('fromDate').value):null;
-  const to = document.getElementById('toDate').value?new Date(document.getElementById('toDate').value+'T23:59:59'):null;
-  const cat = document.getElementById('byCat').value||'';
-  const q = document.getElementById('q').value.toLowerCase().trim();
-  return list.filter(e=>{
-    const d = e.createdAt?.toDate?e.createdAt.toDate():(e.createdAt?new Date(e.createdAt):null);
-    if(from && (!d||d<from)) return false;
-    if(to && (!d||d>to)) return false;
-    if(cat && e.category!==cat) return false;
-    if(q && !e.text.toLowerCase().includes(q)) return false;
-    return true;
+function applyFilters(entries) {
+  const dateFilter = document.getElementById("dateFilter").value;
+  const typeFilter = document.getElementById("typeFilter").value;
+
+  return entries.filter(e => {
+    let ok = true;
+
+    // Filtre per data
+    if (dateFilter) {
+      const entryDate = toLocal(e.createdAt).iso
+        ? toLocal(e.createdAt).iso.split("T")[0]
+        : "";
+      if (entryDate !== dateFilter) ok = false;
+    }
+
+    // Filtre per tipus (ja porta el color incorporat)
+    if (typeFilter && typeFilter !== "all") {
+      if (e.category !== typeFilter) ok = false;
+    }
+
+    return ok;
   });
 }
 
@@ -255,10 +264,16 @@ downloadTxtBtn.onclick=async ()=>{
   const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
   const ref = collection(db,'entries');
   const snap = await getDocs(query(ref, where('uid','==',user.uid), orderBy('createdAt','desc')));
-  const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const rows = applyFilters(all); // <<< usa los filtros
+
   const lines = rows.map(e=>`[${toLocal(e.createdAt).pretty}] (${labelFromCat(e.category)})\n${e.text}\n`);
   const blob = new Blob([lines.join('\n')], {type:'text/plain'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mi_diario_salud.txt'; a.click(); URL.revokeObjectURL(a.href);
+  const a = document.createElement('a'); 
+  a.href=URL.createObjectURL(blob); 
+  a.download='mi_diario_salud.txt'; 
+  a.click(); 
+  URL.revokeObjectURL(a.href);
 };
 
 downloadPdfBtn.onclick=async ()=>{
@@ -268,7 +283,9 @@ downloadPdfBtn.onclick=async ()=>{
   const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
   const ref = collection(db,'entries');
   const snap = await getDocs(query(ref, where('uid','==',user.uid), orderBy('createdAt','desc')));
-  const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const rows = applyFilters(all); // <<< usa los filtros
+
   for(const e of rows){
     const d = toLocal(e.createdAt).iso?new Date(toLocal(e.createdAt).iso):new Date();
     doc.setTextColor(...colorHexToRGB(e.color));
