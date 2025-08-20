@@ -99,6 +99,10 @@ footer{opacity:.6;font-size:12px;text-align:center;padding:20px}
 </main>
 
 <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, setDoc, serverTimestamp, query, where, orderBy, onSnapshot, enableIndexedDbPersistence, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCo9Yp1KX0qksIcrQScIpKOREh8tfKFuLI",
   authDomain: "llibreta210715.firebaseapp.com",
@@ -107,11 +111,6 @@ const firebaseConfig = {
   messagingSenderId: "85382775730",
   appId: "1:85382775730:web:e6bc697d70944b2ef01aab"
 };
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, setDoc, serverTimestamp, query, where, orderBy, onSnapshot, enableIndexedDbPersistence, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -121,18 +120,18 @@ const entryEl=document.getElementById('entry');
 const listEl=document.getElementById('list');
 const saveBtn=document.getElementById('saveBtn');
 const clearBtn=document.getElementById('clearBtn');
-const openAllBtn=document.getElementById('openAllBtn');
 const downloadBtn=document.getElementById('downloadBtn');
 const fromDateEl=document.getElementById('fromDate');
 const toDateEl=document.getElementById('toDate');
 const byCatEl=document.getElementById('byCat');
 const qEl=document.getElementById('q');
 const resetFilters=document.getElementById('resetFilters');
-
+const openAllBtn=document.getElementById('openAllBtn');
 const pal=Array.from(document.querySelectorAll('.sw'));
 let current={color:'yellow',category:'comida'};
 let unsub=null;
 let editingId=null;
+let allEntries=[];
 
 pal.forEach(sw=>{
   sw.addEventListener('click',()=>{
@@ -175,8 +174,8 @@ function startListening(uid){
   const ref=collection(db,'entries');
   const qRef=query(ref,where('uid','==',uid),orderBy('createdAt','desc'));
   unsub=onSnapshot(qRef,(snap)=>{
-    const all=snap.docs.map(d=>({id:d.id,...d.data()}));
-    render(all);
+    allEntries=snap.docs.map(d=>({id:d.id,...d.data()}));
+    render(allEntries);
   });
 }
 
@@ -194,7 +193,7 @@ saveBtn.onclick=async()=>{
         uid:user.uid,text,category:current.category,color:current.color,createdAt:serverTimestamp()
       });
     }
-    entryEl.value=''; applyFiltersOnCurrent();
+    entryEl.value=''; render(allEntries);
   }catch(e){alert('Error al guardar: '+e.message);}
 };
 
@@ -225,45 +224,35 @@ function labelFromCat(c){
   return c==='comida'?'Amarillo · Comida':c==='deporte'?'Verde · Deporte':c==='sintomas_meds'?'Azul · Síntomas/medicación':'Lila · Síntomas EM';
 }
 
-function toLocal(ts){ if(!ts)return{iso:'',pretty:'(sin fecha)'}; const d=ts.toDate?ts.toDate():new Date(ts); return{iso:d.toISOString(),pretty:d.toLocaleString()}; }
+function toLocal(ts){ if(!ts)return{iso:'',pretty:'(sin fecha)'}; const d=ts.toDate?ts.toDate():new Date(ts); return {iso:d.toISOString(),pretty:d.toLocaleString()}; }
 function escapeHtml(str){return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
 
 function applyFilters(list){
-  const from=fromDateEl.value?new Date(fromDateEl.value):null;
-  const to=toDateEl.value?new Date(toDateEl.value+'T23:59:59'):null;
-  const cat=byCatEl.value||'';
-  const q=qEl.value.toLowerCase().trim();
+  const from = fromDateEl.value ? new Date(fromDateEl.value) : null;
+  const to = toDateEl.value ? new Date(toDateEl.value+'T23:59:59') : null;
+  const cat = byCatEl.value || '';
+  const q = qEl.value.toLowerCase().trim();
   return list.filter(e=>{
-    const d=e.createdAt?.toDate?e.createdAt.toDate():(e.createdAt?new Date(e.createdAt):null);
-    if(from && (!d || d<from))return false;
-    if(to && (!d || d>to))return false;
-    if(cat && e.category!==cat)return false;
-    if(q && !e.text.toLowerCase().includes(q))return false;
+    const d = e.createdAt?.toDate ? e.createdAt.toDate() : (e.createdAt ? new Date(e.createdAt) : null);
+    if (from && (!d || d<from)) return false;
+    if (to && (!d || d>to)) return false;
+    if (cat && e.category!==cat) return false;
+    if (q && !e.text.toLowerCase().includes(q)) return false;
     return true;
   });
 }
 
-function applyFiltersOnCurrent(){
-  const user=auth.currentUser; if(!user)return;
-  const ref=collection(db,'entries');
-  getDocs(query(ref,where('uid','==',user.uid),orderBy('createdAt','desc'))).then(snap=>{ const all=snap.docs.map(d=>({id:d.id,...d.data()})); render(all); });
-}
+[fromDateEl,toDateEl,byCatEl,qEl].forEach(el=>el.addEventListener('input',()=>{ render(allEntries); }));
+resetFilters.onclick=()=>{ fromDateEl.value=''; toDateEl.value=''; byCatEl.value=''; qEl.value=''; render(allEntries); };
+openAllBtn.onclick=()=>{ window.scrollTo({top: document.querySelector('.filters').offsetTop-80, behavior:'smooth'}); };
 
-[fromDateEl,toDateEl,byCatEl,qEl].forEach(el=>el.addEventListener('input',applyFiltersOnCurrent));
-resetFilters.onclick=()=>{ fromDateEl.value=''; toDateEl.value=''; byCatEl.value=''; qEl.value=''; applyFiltersOnCurrent(); };
-
-openAllBtn.onclick=()=>{ window.scrollTo({ top: document.querySelector('.filters').offsetTop-80, behavior:'smooth' }); };
-
-downloadBtn.onclick=async()=>{
+downloadBtn.onclick=()=>{
   const user=auth.currentUser; if(!user){alert('Inicia sesión primero');return;}
-  const ref=collection(db,'entries');
-  const snap=await getDocs(query(ref,where('uid','==',user.uid),orderBy('createdAt','desc')));
-  const rows=snap.docs.map(d=>({id:d.id,...d.data()}));
-  const lines=rows.map(e=>`[${toLocal(e.createdAt).pretty}] (${labelFromCat(e.category)})\n${e.text}\n`);
+  const lines=allEntries.map(e=>`[${toLocal(e.createdAt).pretty}] (${labelFromCat(e.category)})\n${e.text}\n`);
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='mi_diario_salud.txt'; a.click();
-  URL.revokeObjectURL(url);
+  const a=Object.assign(document.createElement('a'),{href:url,download:'mi_diario_salud.txt'});
+  a.click(); URL.revokeObjectURL(url);
 };
 </script>
 </body>
