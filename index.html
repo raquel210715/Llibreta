@@ -202,6 +202,35 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
         render(all);
       });
     }
+    // --- GUARDAR NOTA ---
+function guardarNota(uid, texto, color) {
+  db.collection("users").doc(uid).collection("entries").add({
+    text: texto,
+    color: color,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(() => {
+    console.log("Nota guardada correctamente");
+  }).catch((error) => {
+    console.error("Error guardando nota: ", error);
+  });
+}
+
+// --- LEER NOTAS ---
+function cargarNotas(uid) {
+  db.collection("users").doc(uid).collection("entries")
+    .orderBy("timestamp", "desc")
+    .onSnapshot((snapshot) => {
+      let contenedor = document.getElementById("notas");
+      contenedor.innerHTML = "";
+      snapshot.forEach((doc) => {
+        let data = doc.data();
+        let div = document.createElement("div");
+        div.style.borderLeft = `8px solid ${data.color}`;
+        div.innerHTML = `<strong>${data.timestamp?.toDate().toLocaleString()}</strong><br>${data.text}`;
+        contenedor.appendChild(div);
+      });
+    });
+}
 
     // Save
     saveBtn.onclick = async () => {
