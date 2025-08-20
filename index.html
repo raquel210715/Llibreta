@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="es">
+<!DOCTYPE html>
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -47,7 +48,6 @@ input[type="date"]{padding:10px 12px; border-radius:10px; border:1px solid var(-
 .login{display:flex; align-items:center; gap:10px}
 .avatar{width:28px; height:28px; border-radius:50%; background:#0002}
 footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
-
   </style>
 </head>
 <body>
@@ -61,7 +61,8 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
       <button id="anonBtn" class="btn ghost">Entrar anónimo</button>
       <button id="signoutBtn" class="btn" style="display:none">Salir</button>
     </div>
-  </header>  <main class="grid">
+  </header>  
+  <main class="grid">
     <!-- Composer -->
     <section class="card composer" aria-label="Editor de entrada">
       <div class="row" style="justify-content:space-between">
@@ -82,50 +83,50 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
         <button id="saveBtn" class="btn">Guardar</button>
         <button id="clearBtn" class="btn ghost">Limpiar</button>
       </div>
-    </section><!-- Filters -->
-<section class="card filters" aria-label="Filtros">
-  <input id="fromDate" type="date" />
-  <input id="toDate" type="date" />
-  <select id="byCat">
-    <option value="">Todas las categorías</option>
-    <option value="comida">Amarillo · Comida</option>
-    <option value="deporte">Verde · Deporte</option>
-    <option value="sintomas_meds">Azul · Síntomas/medicación</option>
-    <option value="sintomas_em">Lila · Síntomas EM</option>
-  </select>
-  <input id="q" class="search" type="search" placeholder="Buscar texto..." />
-  <button id="resetFilters" class="btn ghost">Reset</button>
-</section>
+    </section>
 
-<!-- List -->
-<section class="card list" id="list" aria-live="polite"></section>
+    <!-- Filters -->
+    <section class="card filters" aria-label="Filtros">
+      <input id="fromDate" type="date" />
+      <input id="toDate" type="date" />
+      <select id="byCat">
+        <option value="">Todas las categorías</option>
+        <option value="comida">Amarillo · Comida</option>
+        <option value="deporte">Verde · Deporte</option>
+        <option value="sintomas_meds">Azul · Síntomas/medicación</option>
+        <option value="sintomas_em">Lila · Síntomas EM</option>
+      </select>
+      <input id="q" class="search" type="search" placeholder="Buscar texto..." />
+      <button id="resetFilters" class="btn ghost">Reset</button>
+    </section>
 
-<footer>Guardado en la nube con Firebase · Funciona offline y sincroniza cuando vuelves a tener conexión.</footer>
+    <!-- List -->
+    <section class="card list" id="list" aria-live="polite"></section>
 
-  </main>  <!-- Firebase SDKs (v10) -->  <script type="module">
-    // 1) Rellena con TU configuración de Firebase (Project Settings → General → SDK setup & configuration)
+    <footer>Guardado en la nube con Firebase · Funciona offline y sincroniza cuando vuelves a tener conexión.</footer>
+  </main>  
+
+  <!-- Firebase SDKs (v10) -->
+  <script type="module">
     const firebaseConfig = {
-    apiKey: "AIzaSyCo9Yp1KX0qksIcrQScIpKOREh8tfKFuLI",
-    authDomain: "llibreta210715.firebaseapp.com",
-    projectId: "llibreta210715",
-    storageBucket: "llibreta210715.firebasestorage.app",
-    messagingSenderId: "85382775730",
-    appId: "1:85382775730:web:e6bc697d70944b2ef01aab"
-  };
+      apiKey: "AIzaSyCo9Yp1KX0qksIcrQScIpKOREh8tfKFuLI",
+      authDomain: "llibreta210715.firebaseapp.com",
+      projectId: "llibreta210715",
+      storageBucket: "llibreta210715.firebasestorage.app",
+      messagingSenderId: "85382775730",
+      appId: "1:85382775730:web:e6bc697d70944b2ef01aab"
+    };
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, enableIndexedDbPersistence, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // App + services
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Offline (cache en IndexedDB)
-    enableIndexedDbPersistence(db).catch(() => {/* puede fallar si múltiples pestañas */});
+    enableIndexedDbPersistence(db).catch(() => {});
 
-    // UI elements
     const entryEl = document.getElementById('entry');
     const listEl = document.getElementById('list');
     const saveBtn = document.getElementById('saveBtn');
@@ -140,7 +141,7 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
 
     const pal = Array.from(document.querySelectorAll('.sw'));
     let current = { color: 'yellow', category: 'comida' };
-    let unsub = null; // firestore listener
+    let unsub = null;
 
     pal.forEach(sw => {
       sw.addEventListener('click', () => {
@@ -151,24 +152,17 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
         entryEl.style.borderLeft = `10px solid var(--${current.color})`;
       });
     });
-    // activar por defecto la primera
     pal[0].click();
 
-    // Auth
     const signinBtn = document.getElementById('signinBtn');
     const anonBtn = document.getElementById('anonBtn');
     const signoutBtn = document.getElementById('signoutBtn');
     const who = document.getElementById('who');
     const avatar = document.getElementById('avatar');
-
     const provider = new GoogleAuthProvider();
 
-    signinBtn.onclick = async () => {
-      try { await signInWithPopup(auth, provider); } catch(e){ alert(e.message); }
-    };
-    anonBtn.onclick = async () => {
-      try { const { user } = await signInAnonymously(auth); if(!user.displayName){ await updateProfile(user,{displayName:'Anónimo'});} } catch(e){ alert(e.message); }
-    };
+    signinBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ alert(e.message); }};
+    anonBtn.onclick = async () => { try { const { user } = await signInAnonymously(auth); if(!user.displayName){ await updateProfile(user,{displayName:'Anónimo'});} } catch(e){ alert(e.message); }};
     signoutBtn.onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
@@ -195,44 +189,13 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
     function startListening(uid){
       stopListening();
       const ref = collection(db, 'entries');
-      // Nota: el filtrado por fecha y texto lo hacemos del lado cliente para mantenerlo simple
       const qRef = query(ref, where('uid','==',uid), orderBy('createdAt','desc'));
       unsub = onSnapshot(qRef, (snap) => {
         const all = snap.docs.map(d=> ({ id:d.id, ...d.data() }));
         render(all);
       });
     }
-    // --- GUARDAR NOTA ---
-function guardarNota(uid, texto, color) {
-  db.collection("users").doc(uid).collection("entries").add({
-    text: texto,
-    color: color,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(() => {
-    console.log("Nota guardada correctamente");
-  }).catch((error) => {
-    console.error("Error guardando nota: ", error);
-  });
-}
 
-// --- LEER NOTAS ---
-function cargarNotas(uid) {
-  db.collection("users").doc(uid).collection("entries")
-    .orderBy("timestamp", "desc")
-    .onSnapshot((snapshot) => {
-      let contenedor = document.getElementById("notas");
-      contenedor.innerHTML = "";
-      snapshot.forEach((doc) => {
-        let data = doc.data();
-        let div = document.createElement("div");
-        div.style.borderLeft = `8px solid ${data.color}`;
-        div.innerHTML = `<strong>${data.timestamp?.toDate().toLocaleString()}</strong><br>${data.text}`;
-        contenedor.appendChild(div);
-      });
-    });
-}
-
-    // Save
     saveBtn.onclick = async () => {
       const text = entryEl.value.trim();
       if(!text){ alert('Escribe algo antes de guardar'); return; }
@@ -251,7 +214,6 @@ function cargarNotas(uid) {
 
     clearBtn.onclick = ()=> entryEl.value='';
 
-    // Filters + render
     function render(data){
       const filt = applyFilters(data);
       listEl.innerHTML = '';
@@ -308,9 +270,6 @@ function cargarNotas(uid) {
     }
 
     [fromDateEl, toDateEl, byCatEl, qEl].forEach(el=> el.addEventListener('input', ()=>{
-      // Re-render usando el último snapshot almacenado en memoria (via listener)
-      // onSnapshot llama a render con los datos actuales, así que solo forzamos un re-render con los mismos nodos
-      // Para simplificar, pedimos los docs una vez y filtramos aquí
       const user = auth.currentUser; if(!user) return;
       const ref = collection(db,'entries');
       const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc'));
@@ -320,14 +279,21 @@ function cargarNotas(uid) {
       });
     }));
 
-    resetFilters.onclick = ()=>{ fromDateEl.value=''; toDateEl.value=''; byCatEl.value=''; qEl.value=''; const user = auth.currentUser; if(!user) return; const ref = collection(db,'entries'); const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc')); getDocs(qRef).then(snap=>{ const all=snap.docs.map(d=>({id:d.id,...d.data()})); render(all);}); };
+    resetFilters.onclick = ()=>{
+      fromDateEl.value=''; toDateEl.value=''; byCatEl.value=''; qEl.value='';
+      const user = auth.currentUser; if(!user) return;
+      const ref = collection(db,'entries');
+      const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc'));
+      getDocs(qRef).then(snap=>{
+        const all=snap.docs.map(d=>({id:d.id,...d.data()}));
+        render(all);
+      });
+    };
 
-    // Toggle list (icon 📖)
     openAllBtn.onclick = ()=>{
       window.scrollTo({ top: document.querySelector('.filters').offsetTop - 80, behavior:'smooth' });
     };
 
-    // Download TXT
     downloadBtn.onclick = async () => {
       const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
       const ref = collection(db,'entries');
@@ -340,7 +306,7 @@ function cargarNotas(uid) {
       const a = Object.assign(document.createElement('a'), { href:url, download:'mi_diario_salud.txt' });
       a.click(); URL.revokeObjectURL(url);
     };
-  </script>  <!-- Guía rápida (quítala si no la necesitas) -->  <script>
-    console.log(`\n== Guía rápida para activar la nube ==\n1) Ve a https://console.firebase.google.com → Crea proyecto.\n2) En "Build → Authentication": habilita Google y Anónimo.\n3) En "Build → Firestore Database": crea base de datos en modo producción.\n4) En Configuración del proyecto → pestaña General: copia la configuración web y pégala en firebaseConfig.\n5) Reglas de Firestore (básicas) — reemplaza TU_PROJECT_ID: \n   rules_version = '2';\n   service cloud.firestore {\n     match /databases/{database}/documents {\n       match /entries/{docId} {\n         allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;\n         allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;\n       }\n     }\n   }\n6) Sube este archivo a GitHub Pages y listo.\n`);
-  </script></body>
+  </script>
+
+</body>
 </html>
