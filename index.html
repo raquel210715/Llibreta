@@ -1,203 +1,228 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Diario Salud</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mi Diario Salud (Cloud)</title>
+  <meta name="color-scheme" content="light dark" />
   <style>
-    body { font-family: Arial, sans-serif; background:#f6f7fb; margin:0; padding:0; }
-    header { background:#4a90e2; color:white; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
-    header h1 { font-size:1.2rem; margin:0; }
-    #user-info { display:flex; align-items:center; gap:8px; }
-    #user-pic { border-radius:50%; width:32px; height:32px; } /* 👈 tamaño avatar más pequeño */
-    main { padding:1rem; }
-    button { margin:4px; padding:8px 12px; border:none; border-radius:6px; background:#4a90e2; color:white; cursor:pointer; }
-    button:hover { background:#357abd; }
-    .note { border-radius:8px; padding:10px; margin:8px 0; }
-    .yellow { background:#fef08a; }
-    .green { background:#bbf7d0; }
-    .blue { background:#bfdbfe; }
-    .purple { background:#e9d5ff; }
-    #filters { margin:1rem 0; padding:1rem; background:white; border-radius:8px; }
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --primary:#4a90e2;
+      --yellow:#fff9c4; --green:#c8e6c9; --blue:#bbdefb; --purple:#e1bee7;
+    }
+    body{font-family:sans-serif;margin:0;background:var(--bg);color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;
+      padding:10px 16px;background:var(--primary);color:white;}
+    header h1{font-size:18px;margin:0;}
+    #user-info{display:flex;align-items:center;gap:8px;}
+    .avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;}
+    main{max-width:800px;margin:0 auto;padding:16px;}
+    textarea{width:100%;min-height:80px;padding:8px;}
+    select,button,input[type=date]{padding:6px;margin:4px;}
+    .entry{background:var(--card);padding:8px;margin:8px 0;border-radius:8px;}
+    .yellow{background:var(--yellow);} .green{background:var(--green);}
+    .blue{background:var(--blue);} .purple{background:var(--purple);}
+    .filters{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+    .actions{margin-top:10px;}
+    .entry-header{display:flex;justify-content:space-between;align-items:center;}
   </style>
 </head>
 <body>
   <header>
     <h1>Mi Diario Salud</h1>
     <div id="user-info">
-      <img id="user-pic" src="" alt="User" hidden>
+      <img id="user-pic" class="avatar" src="" alt="" hidden>
       <span id="user-name"></span>
-      <button id="loginBtn">Iniciar sesión</button>
-      <button id="logoutBtn" style="display:none;">Cerrar sesión</button>
+      <button id="login">Iniciar sesión</button>
+      <button id="logout" hidden>Salir</button>
     </div>
   </header>
   <main>
-    <section id="filters">
-      <h3>Filtros</h3>
-      <label>Fecha: <input type="date" id="filterDate"></label>
-      <label>Tipo: 
-        <select id="filterCategory">
-          <option value="">Todos</option>
-          <option value="yellow">Menú</option>
-          <option value="green">Compra</option>
-          <option value="blue">Síntomas</option>
-          <option value="purple">Notas</option>
-        </select>
-      </label>
-      <label>Texto: <input type="text" id="filterText"></label>
-      <button id="applyFiltersBtn">Aplicar filtros</button>
+    <section>
+      <textarea id="text" placeholder="Escribe aquí..."></textarea><br/>
+      <select id="category">
+        <option value="yellow">Ánimo</option>
+        <option value="green">Salud</option>
+        <option value="blue">Ejercicio</option>
+        <option value="purple">Otro</option>
+      </select>
+      <button id="save">Guardar</button>
     </section>
 
-    <div>
-      <button id="downloadTxtBtn">Descargar TXT</button>
-      <button id="downloadPdfBtn">Descargar PDF</button>
-    </div>
+    <section class="filters">
+      <label>Desde <input type="date" id="fromDate"></label>
+      <label>Hasta <input type="date" id="toDate"></label>
+      <select id="byCategory">
+        <option value="">Todas las categorías</option>
+        <option value="yellow">Ánimo</option>
+        <option value="green">Salud</option>
+        <option value="blue">Ejercicio</option>
+        <option value="purple">Otro</option>
+      </select>
+      <input type="text" id="searchText" placeholder="Buscar texto">
+      <button id="applyFilters">Aplicar filtros</button>
+    </section>
 
-    <h3>Registros</h3>
-    <div id="entries"></div>
+    <section class="actions">
+      <button id="downloadTxt">Descargar TXT</button>
+      <button id="downloadPdf">Descargar PDF</button>
+    </section>
+
+    <section id="entries"></section>
   </main>
 
   <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-
-  <!-- jsPDF -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <script>
-    // === CONFIGURA TU FIREBASE ===
-    const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_PROJECT.firebaseapp.com",
-      projectId: "TU_PROJECT",
-      storageBucket: "TU_PROJECT.appspot.com",
-      messagingSenderId: "XXX",
-      appId: "XXX"
-    };
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+  const firebaseConfig = {
+    apiKey: "AIzaSyXXXXXXX",
+    authDomain: "XXXX.firebaseapp.com",
+    projectId: "XXXX",
+    storageBucket: "XXXX.appspot.com",
+    messagingSenderId: "XXXX",
+    appId: "XXXX"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
-    let currentUser = null;
-    let currentEntries = []; // 👈 almacenamos registros mostrados tras filtro
+  const loginBtn=document.getElementById('login');
+  const logoutBtn=document.getElementById('logout');
+  const userPic=document.getElementById('user-pic');
+  const userName=document.getElementById('user-name');
 
-    // Login/Logout
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const userName = document.getElementById("user-name");
-    const userPic = document.getElementById("user-pic");
+  loginBtn.onclick=()=>{ 
+    const provider=new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider);
+  };
+  logoutBtn.onclick=()=>auth.signOut();
 
-    loginBtn.onclick = async () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      await auth.signInWithPopup(provider);
-    };
-    logoutBtn.onclick = () => auth.signOut();
+  auth.onAuthStateChanged(user=>{
+    if(user){
+      userPic.src=user.photoURL; userPic.hidden=false;
+      userName.textContent=user.displayName;
+      loginBtn.hidden=true; logoutBtn.hidden=false;
+      loadEntries();
+    }else{
+      userPic.hidden=true; userName.textContent='';
+      loginBtn.hidden=false; logoutBtn.hidden=true;
+      document.getElementById('entries').innerHTML='';
+    }
+  });
 
-    auth.onAuthStateChanged(user => {
-      if(user){
-        currentUser = user;
-        userName.textContent = user.displayName;
-        userPic.src = user.photoURL;
-        userPic.hidden = false;
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        loadEntries();
-      } else {
-        currentUser = null;
-        userName.textContent = "";
-        userPic.hidden = true;
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
-        document.getElementById("entries").innerHTML = "";
-      }
+  document.getElementById('save').onclick=async ()=>{
+    const text=document.getElementById('text').value;
+    const category=document.getElementById('category').value;
+    const user=auth.currentUser;
+    if(!user||!text) return;
+    await db.collection('entries').add({
+      uid:user.uid, text, category, color:category,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    document.getElementById('text').value='';
+    loadEntries();
+  };
 
-    function renderEntries(entries){
-      const container = document.getElementById("entries");
-      container.innerHTML = "";
-      entries.forEach(e => {
-        const div = document.createElement("div");
-        div.className = "note " + e.category;
-        div.innerHTML = `<strong>${new Date(e.date.seconds*1000).toLocaleString()}</strong><br>${e.text}`;
-        container.appendChild(div);
-      });
-      currentEntries = entries; // 👈 guardamos lo mostrado
+  async function loadEntries(){
+    const user=auth.currentUser; if(!user) return;
+    const snap=await db.collection('entries').where('uid','==',user.uid).orderBy('createdAt','desc').get();
+    const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderEntries(arr);
+  }
+
+  function renderEntries(entries){
+    const cont=document.getElementById('entries');
+    cont.innerHTML='';
+    const filtered=applyFilters(entries);
+    filtered.forEach(e=>{
+      const div=document.createElement('div');
+      div.className='entry '+e.category;
+      const date=e.createdAt?.toDate?e.createdAt.toDate():new Date();
+      div.innerHTML=`
+        <div class="entry-header">
+          <small>${date.toLocaleString()} - ${labelFromCat(e.category)}</small>
+          <button onclick="deleteEntry('${e.id}')">🗑</button>
+        </div>
+        <div>${e.text}</div>`;
+      cont.appendChild(div);
+    });
+  }
+
+  async function deleteEntry(id){
+    if(confirm("¿Eliminar entrada?")){
+      await db.collection('entries').doc(id).delete();
+      loadEntries();
     }
+  }
 
-    function loadEntries(){
-      if(!currentUser) return;
-      db.collection("entries").where("uid","==",currentUser.uid).orderBy("date","desc")
-        .onSnapshot(snapshot => {
-          const entries = snapshot.docs.map(doc => doc.data());
-          renderEntries(entries);
-        });
+  function labelFromCat(c){
+    return {yellow:'Ánimo',green:'Salud',blue:'Ejercicio',purple:'Otro'}[c]||c;
+  }
+
+  // === FILTROS ===
+  function applyFilters(entries){
+    const from=document.getElementById('fromDate').value;
+    const to=document.getElementById('toDate').value;
+    const cat=document.getElementById('byCategory').value;
+    const text=document.getElementById('searchText').value.toLowerCase();
+    return entries.filter(e=>{
+      const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
+      if(from && d<new Date(from)) return false;
+      if(to && d>new Date(to+'T23:59')) return false;
+      if(cat && e.category!==cat) return false;
+      if(text && !e.text.toLowerCase().includes(text)) return false;
+      return true;
+    });
+  }
+  document.getElementById('applyFilters').onclick=loadEntries;
+
+  // === DESCARGAS ===
+  document.getElementById('downloadTxt').onclick=async ()=>{
+    const user=auth.currentUser; if(!user) return;
+    const snap=await db.collection('entries').where('uid','==',user.uid).orderBy('createdAt','desc').get();
+    const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const rows=applyFilters(arr);
+    const lines=rows.map(e=>{
+      const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
+      return `[${d.toLocaleString()}] (${labelFromCat(e.category)})\n${e.text}\n`;
+    });
+    const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='mi_diario_salud.txt';
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  document.getElementById('downloadPdf').onclick=async ()=>{
+    const { jsPDF } = window.jspdf;
+    const doc=new jsPDF();
+    let y=10;
+    const user=auth.currentUser; if(!user) return;
+    const snap=await db.collection('entries').where('uid','==',user.uid).orderBy('createdAt','desc').get();
+    const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const rows=applyFilters(arr);
+
+    for(const e of rows){
+      const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
+      const color=colorHexToRGB(e.color);
+      doc.setTextColor(...color);
+      doc.text(`[${d.toLocaleString()}] (${labelFromCat(e.category)})`,12,y);
+      y+=8;
+      const split=doc.splitTextToSize(e.text,180);
+      doc.text(split,12,y);
+      y+=split.length*8+6;
+      if(y>270){doc.addPage();y=10;}
     }
+    doc.save('mi_diario_salud.pdf');
+  };
 
-    // Filtros
-    document.getElementById("applyFiltersBtn").onclick = () => {
-      if(!currentUser) return;
-      let query = db.collection("entries").where("uid","==",currentUser.uid);
-
-      const filterDate = document.getElementById("filterDate").value;
-      if(filterDate){
-        const start = new Date(filterDate);
-        const end = new Date(filterDate);
-        end.setDate(end.getDate()+1);
-        query = query.where("date", ">=", start).where("date", "<", end);
-      }
-      const filterCategory = document.getElementById("filterCategory").value;
-      if(filterCategory) query = query.where("category","==",filterCategory);
-
-      query.orderBy("date","desc").get().then(snapshot => {
-        let entries = snapshot.docs.map(doc => doc.data());
-        const textFilter = document.getElementById("filterText").value.toLowerCase();
-        if(textFilter) entries = entries.filter(e => e.text.toLowerCase().includes(textFilter));
-        renderEntries(entries);
-      });
-    };
-
-    // Descargar TXT
-    document.getElementById("downloadTxtBtn").onclick = () => {
-      if(currentEntries.length === 0){ alert("No hay registros para exportar"); return; }
-      let text = currentEntries.map(e => `[${new Date(e.date.seconds*1000).toLocaleString()}] ${e.text}`).join("\n\n");
-      const blob = new Blob([text], { type:"text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "mi_diario_salud.txt";
-      link.click();
-    };
-
-    // Descargar PDF
-    document.getElementById("downloadPdfBtn").onclick = () => {
-      if(currentEntries.length === 0){ alert("No hay registros para exportar"); return; }
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      let y = 20;
-      doc.setFontSize(14);
-      doc.text("Mi Diario Salud", 10, 10);
-      currentEntries.forEach(e => {
-        const d = new Date(e.date.seconds*1000);
-        doc.setFontSize(11);
-        doc.setFillColor(...colorHexToRGB(e.category));
-        doc.rect(10, y-5, 190, 10, "F");
-        doc.setTextColor(0,0,0);
-        doc.text(`[${d.toLocaleString()}] ${e.text}`, 12, y+2);
-        y += 15;
-        if(y > 280){ doc.addPage(); y=20; }
-      });
-      doc.save("mi_diario_salud.pdf");
-    };
-
-    function colorHexToRGB(cat){
-      switch(cat){
-        case 'yellow': return [253,224,71];
-        case 'green': return [134,239,172];
-        case 'blue': return [147,197,253];
-        case 'purple': return [233,213,255];
-        default: return [200,200,200];
-      }
-    }
+  function colorHexToRGB(c){
+    const map={yellow:[247,202,24],green:[76,175,80],blue:[33,150,243],purple:[156,39,176]};
+    return map[c]||[0,0,0];
+  }
   </script>
 </body>
 </html>
