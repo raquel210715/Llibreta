@@ -34,20 +34,18 @@
     .sw[title*="Amarillo"]{background:var(--yellow)}
     .sw[title*="Verde"]{background:var(--green)}
     .sw[title*="Azul"]{background:var(--blue)}
-    .sw[title*="Lila"]{background:var(--purple)}.actions{display:flex; gap:10px; justify-content:flex-end; padding:10px 0}
-
-.list{margin-top:18px; padding:8px}
-.item{border-left:10px solid transparent; padding:12px 14px; border-radius:14px; border:1px solid var(--ring); margin-bottom:12px; background:var(--card)}
-.meta{display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted)}
-.tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--ring);}
-
-.filters{padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-input[type="date"]{padding:10px 12px; border-radius:10px; border:1px solid var(--ring); background:transparent; color:var(--ink)}
-.search{flex:1; min-width:180px}
-
-.login{display:flex; align-items:center; gap:10px}
-.avatar{width:28px; height:28px; border-radius:50%; background:#0002}
-footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
+    .sw[title*="Lila"]{background:var(--purple)}
+    .actions{display:flex; gap:10px; justify-content:flex-end; padding:10px 0}
+    .list{margin-top:18px; padding:8px}
+    .item{border-left:10px solid transparent; padding:12px 14px; border-radius:14px; border:1px solid var(--ring); margin-bottom:12px; background:var(--card); cursor:pointer;}
+    .meta{display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted)}
+    .tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--ring);}
+    .filters{padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    input[type="date"]{padding:10px 12px; border-radius:10px; border:1px solid var(--ring); background:transparent; color:var(--ink)}
+    .search{flex:1; min-width:180px}
+    .login{display:flex; align-items:center; gap:10px}
+    .avatar{width:28px; height:28px; border-radius:50%; background:#0002}
+    footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
   </style>
 </head>
 <body>
@@ -61,9 +59,9 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
       <button id="anonBtn" class="btn ghost">Entrar anónimo</button>
       <button id="signoutBtn" class="btn" style="display:none">Salir</button>
     </div>
-  </header>  
+  </header>
+
   <main class="grid">
-    <!-- Composer -->
     <section class="card composer" aria-label="Editor de entrada">
       <div class="row" style="justify-content:space-between">
         <div class="palette" role="group" aria-label="Categorías">
@@ -85,7 +83,6 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
       </div>
     </section>
 
-    <!-- Filters -->
     <section class="card filters" aria-label="Filtros">
       <input id="fromDate" type="date" />
       <input id="toDate" type="date" />
@@ -100,14 +97,15 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
       <button id="resetFilters" class="btn ghost">Reset</button>
     </section>
 
-    <!-- List -->
     <section class="card list" id="list" aria-live="polite"></section>
-
     <footer>Guardado en la nube con Firebase · Funciona offline y sincroniza cuando vuelves a tener conexión.</footer>
-  </main>  
+  </main>
 
-  <!-- Firebase SDKs (v10) -->
   <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, where, orderBy, onSnapshot, enableIndexedDbPersistence, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyCo9Yp1KX0qksIcrQScIpKOREh8tfKFuLI",
       authDomain: "llibreta210715.firebaseapp.com",
@@ -117,14 +115,9 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
       appId: "1:85382775730:web:e6bc697d70944b2ef01aab"
     };
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, enableIndexedDbPersistence, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
     enableIndexedDbPersistence(db).catch(() => {});
 
     const entryEl = document.getElementById('entry');
@@ -142,6 +135,7 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
     const pal = Array.from(document.querySelectorAll('.sw'));
     let current = { color: 'yellow', category: 'comida' };
     let unsub = null;
+    let editId = null; // ID de nota a editar
 
     pal.forEach(sw => {
       sw.addEventListener('click', () => {
@@ -161,78 +155,39 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
     const avatar = document.getElementById('avatar');
     const provider = new GoogleAuthProvider();
 
-    signinBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ alert(e.message); }};
-    anonBtn.onclick = async () => { try { const { user } = await signInAnonymously(auth); if(!user.displayName){ await updateProfile(user,{displayName:'Anónimo'});} } catch(e){ alert(e.message); }};
+    signinBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ alert(e.message); } };
+    anonBtn.onclick = async () => { try { const { user } = await signInAnonymously(auth); if(!user.displayName){ await updateProfile(user,{displayName:'Anónimo'});} } catch(e){ alert(e.message); } };
     signoutBtn.onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        signinBtn.style.display = 'none';
-        anonBtn.style.display = 'none';
-        signoutBtn.style.display = 'inline-block';
-        who.textContent = user.displayName || user.email || 'Usuario';
-        avatar.src = user.photoURL || '';
+      if(user){
+        signinBtn.style.display='none';
+        anonBtn.style.display='none';
+        signoutBtn.style.display='inline-block';
+        who.textContent=user.displayName||user.email||'Usuario';
+        avatar.src=user.photoURL||'';
         startListening(user.uid);
       } else {
-        who.textContent = '';
+        who.textContent='';
         avatar.removeAttribute('src');
-        signinBtn.style.display = 'inline-block';
-        anonBtn.style.display = 'inline-block';
-        signoutBtn.style.display = 'none';
+        signinBtn.style.display='inline-block';
+        anonBtn.style.display='inline-block';
+        signoutBtn.style.display='none';
         stopListening();
-        listEl.innerHTML = `<div class="item" style="border-left-color:var(--blue)">Inicia sesión para ver/guardar tus notas en la nube.</div>`;
+        listEl.innerHTML=`<div class="item" style="border-left-color:var(--blue)">Inicia sesión para ver/guardar tus notas en la nube.</div>`;
       }
     });
 
-    function stopListening(){ if (unsub){ unsub(); unsub=null; } }
+    function stopListening(){ if(unsub){ unsub(); unsub=null; } }
 
     function startListening(uid){
       stopListening();
-      const ref = collection(db, 'entries');
+      const ref = collection(db,'entries');
       const qRef = query(ref, where('uid','==',uid), orderBy('createdAt','desc'));
-      unsub = onSnapshot(qRef, (snap) => {
-        const all = snap.docs.map(d=> ({ id:d.id, ...d.data() }));
+      unsub = onSnapshot(qRef, snap=>{
+        const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
         render(all);
       });
-    }
-
-    saveBtn.onclick = async () => {
-      const text = entryEl.value.trim();
-      if(!text){ alert('Escribe algo antes de guardar'); return; }
-      const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
-      try{
-        await addDoc(collection(db,'entries'), {
-          uid: user.uid,
-          text,
-          category: current.category,
-          color: current.color,
-          createdAt: serverTimestamp()
-        });
-        entryEl.value = '';
-      }catch(e){ alert('Error al guardar: '+e.message); }
-    };
-
-    clearBtn.onclick = ()=> entryEl.value='';
-
-    function render(data){
-      const filt = applyFilters(data);
-      listEl.innerHTML = '';
-      if(!filt.length){ listEl.innerHTML = `<div class="item" style="border-left-color:var(--purple)">No hay notas para los filtros actuales.</div>`; return; }
-      for(const e of filt){
-        const date = toLocal(e.createdAt);
-        const wrap = document.createElement('article');
-        wrap.className='item';
-        wrap.style.borderLeftColor = `var(--${e.color||'yellow'})`;
-        wrap.innerHTML = `
-          <div class="meta">
-            <span class="tag">${labelFromCat(e.category)}</span>
-            <span>·</span>
-            <time datetime="${date.iso}">${date.pretty}</time>
-          </div>
-          <div style="white-space:pre-wrap; margin-top:6px">${escapeHtml(e.text)}</div>
-        `;
-        listEl.appendChild(wrap);
-      }
     }
 
     function labelFromCat(c){
@@ -243,11 +198,9 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
     }
 
     function toLocal(ts){
-      if (!ts) return { iso:'', pretty:'(sin fecha)' };
+      if(!ts) return {iso:'', pretty:'(sin fecha)'};
       const d = ts.toDate ? ts.toDate() : new Date(ts);
-      const iso = d.toISOString();
-      const pretty = d.toLocaleString();
-      return { iso, pretty };
+      return { iso:d.toISOString(), pretty:d.toLocaleString() };
     }
 
     function escapeHtml(str){
@@ -261,52 +214,104 @@ footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
       const q = qEl.value.toLowerCase().trim();
       return list.filter(e=>{
         const d = e.createdAt?.toDate ? e.createdAt.toDate() : (e.createdAt ? new Date(e.createdAt) : null);
-        if (from && (!d || d < from)) return false;
-        if (to && (!d || d > to)) return false;
-        if (cat && e.category!==cat) return false;
-        if (q && !e.text.toLowerCase().includes(q)) return false;
+        if(from && (!d || d<from)) return false;
+        if(to && (!d || d>to)) return false;
+        if(cat && e.category!==cat) return false;
+        if(q && !e.text.toLowerCase().includes(q)) return false;
         return true;
       });
     }
+
+    function render(data){
+      const filt = applyFilters(data);
+      listEl.innerHTML='';
+      if(!filt.length){ listEl.innerHTML=`<div class="item" style="border-left-color:var(--purple)">No hay notas para los filtros actuales.</div>`; return; }
+      for(const e of filt){
+        const date = toLocal(e.createdAt);
+        const wrap = document.createElement('article');
+        wrap.className='item';
+        wrap.style.borderLeftColor=`var(--${e.color||'yellow'})`;
+        wrap.innerHTML=`
+          <div class="meta">
+            <span class="tag">${labelFromCat(e.category)}</span>
+            <span>·</span>
+            <time datetime="${date.iso}">${date.pretty}</time>
+          </div>
+          <div style="white-space:pre-wrap; margin-top:6px">${escapeHtml(e.text)}</div>
+        `;
+        wrap.onclick = ()=>{ 
+          entryEl.value = e.text;
+          current.color = e.color;
+          current.category = e.category;
+          editId = e.id;
+          pal.forEach(x=>x.dataset.active='false');
+          document.getElementById('sw-'+e.color).dataset.active='true';
+          entryEl.style.borderLeft=`10px solid var(--${e.color})`;
+          window.scrollTo({top: entryEl.offsetTop-80, behavior:'smooth'});
+        };
+        listEl.appendChild(wrap);
+      }
+    }
+
+    saveBtn.onclick = async ()=>{
+      const text = entryEl.value.trim();
+      if(!text){ alert('Escribe algo antes de guardar'); return; }
+      const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
+      try{
+        if(editId){
+          await updateDoc(doc(db,'entries',editId), {
+            text,
+            category: current.category,
+            color: current.color
+          });
+          editId=null;
+        } else {
+          await addDoc(collection(db,'entries'), {
+            uid: user.uid,
+            text,
+            category: current.category,
+            color: current.color,
+            createdAt: serverTimestamp()
+          });
+        }
+        entryEl.value='';
+      }catch(e){ alert('Error al guardar: '+e.message); }
+    };
+
+    clearBtn.onclick=()=>{ entryEl.value=''; editId=null; pal.forEach(x=>x.dataset.active='false'); pal[0].click(); };
 
     [fromDateEl, toDateEl, byCatEl, qEl].forEach(el=> el.addEventListener('input', ()=>{
       const user = auth.currentUser; if(!user) return;
       const ref = collection(db,'entries');
       const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc'));
-      getDocs(qRef).then(snap=>{
-        const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
-        render(all);
-      });
+      getDocs(qRef).then(snap=> render(snap.docs.map(d=>({id:d.id,...d.data()}))) );
     }));
 
-    resetFilters.onclick = ()=>{
+    resetFilters.onclick=()=>{
       fromDateEl.value=''; toDateEl.value=''; byCatEl.value=''; qEl.value='';
       const user = auth.currentUser; if(!user) return;
       const ref = collection(db,'entries');
       const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc'));
-      getDocs(qRef).then(snap=>{
-        const all=snap.docs.map(d=>({id:d.id,...d.data()}));
-        render(all);
-      });
+      getDocs(qRef).then(snap=> render(snap.docs.map(d=>({id:d.id,...d.data()}))) );
     };
 
-    openAllBtn.onclick = ()=>{
-      window.scrollTo({ top: document.querySelector('.filters').offsetTop - 80, behavior:'smooth' });
-    };
+    openAllBtn.onclick=()=>{ window.scrollTo({ top: document.querySelector('.filters').offsetTop - 80, behavior:'smooth' }); };
 
-    downloadBtn.onclick = async () => {
-      const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
-      const ref = collection(db,'entries');
-      const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc'));
-      const snap = await getDocs(qRef);
-      const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
-      const lines = rows.map(e=>`[${toLocal(e.createdAt).pretty}] (${labelFromCat(e.category)})\n${e.text}\n`);
-      const blob = new Blob([lines.join('\n')], {type:'text/plain'});
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement('a'), { href:url, download:'mi_diario_salud.txt' });
-      a.click(); URL.revokeObjectURL(url);
-    };
+    downloadBtn.onclick=async ()=>{
+        const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
+        const ref = collection(db,'entries');
+        const qRef = query(ref, where('uid','==',user.uid), orderBy('createdAt','desc'));
+        const snap = await getDocs(qRef);
+        const rows = snap.docs.map(d=>({id:d.id,...d.data()}));
+        const lines = rows.map(e=>`[${toLocal(e.createdAt).pretty}] (${labelFromCat(e.category)})\n${e.text}\n`);
+        const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mi_diario_salud.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
   </script>
-
 </body>
 </html>
