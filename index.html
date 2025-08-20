@@ -6,7 +6,6 @@
 <title>Mi Diario Salud (Cloud)</title>
 <meta name="color-scheme" content="light dark">
 <style>
-/* --- Estilos similares a los anteriores --- */
 :root{
   --bg:#f6f7fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --ring:#e5e7eb;
   --yellow:#fde047; --green:#86efac; --blue:#93c5fd; --purple:#e9d5ff;
@@ -69,151 +68,223 @@ footer{opacity:.6;font-size:12px;text-align:center;padding:20px;}
         <option value="blue">Azul</option>
         <option value="purple">Lila</option>
       </select>
-      <button id="downloadPdfBtn" class="btn secondary">💾 PDF</button>
+      <button id="downloadPdfBtn" class="btn secondary">Descargar PDF</button>
     </div>
   </section>
 
   <section class="card filters">
-    <input id="fromDate" type="date"/>
-    <input id="toDate" type="date"/>
+    <input id="fromDate" type="date" />
+    <input id="toDate" type="date" />
     <select id="byCat">
-      <option value="">Todas</option>
-      <option value="comida">Amarillo</option>
-      <option value="deporte">Verde</option>
-      <option value="sintomas_meds">Azul</option>
-      <option value="sintomas_em">Lila</option>
+      <option value="">Todas las categorías</option>
+      <option value="comida">Amarillo · Comida</option>
+      <option value="deporte">Verde · Deporte</option>
+      <option value="sintomas_meds">Azul · Síntomas/medicación</option>
+      <option value="sintomas_em">Lila · Síntomas EM</option>
     </select>
-    <input id="q" type="search" placeholder="Buscar..."/>
+    <input id="q" type="search" placeholder="Buscar texto..." />
     <button id="resetFilters" class="btn ghost">Reset</button>
   </section>
 
   <section class="card list" id="list"></section>
-  <footer>Guardado en la nube con Firebase · Solo tú puedes ver tus registros.</footer>
 </main>
 
-<!-- jsPDF UMD -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<footer>Guardado en la nube con Firebase · Funciona offline y sincroniza cuando vuelves a tener conexión.</footer>
+
+<!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, getDocs, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCo9Yp1KX0qksIcrQScIpKOREh8tfKFuLI",
-  authDomain: "llibreta210715.firebaseapp.com",
-  projectId: "llibreta210715",
-  storageBucket: "llibreta210715.appspot.com",
-  messagingSenderId: "85382775730",
-  appId: "1:85382775730:web:e6bc697d70944b2ef01aab"
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROJECT.firebaseapp.com",
+  projectId: "TU_PROJECT",
+  storageBucket: "TU_PROJECT.appspot.com",
+  messagingSenderId: "XXX",
+  appId: "XXX"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+enableIndexedDbPersistence(db).catch(()=>{});
 
 const entryEl = document.getElementById('entry');
-const listEl = document.getElementById('list');
 const saveBtn = document.getElementById('saveBtn');
 const clearBtn = document.getElementById('clearBtn');
-const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+const listEl = document.getElementById('list');
+const fromDateEl = document.getElementById('fromDate');
+const toDateEl = document.getElementById('toDate');
+const byCatEl = document.getElementById('byCat');
+const qEl = document.getElementById('q');
+const resetFilters = document.getElementById('resetFilters');
 const pdfColorFilter = document.getElementById('pdfColorFilter');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
 
-let current={color:'yellow',category:'comida'};
-document.querySelectorAll('.sw').forEach(sw=>{
+let current = { color: 'yellow', category: 'comida' };
+let unsub = null;
+const pal = Array.from(document.querySelectorAll('.sw'));
+pal.forEach(sw=>{
   sw.addEventListener('click',()=>{
-    document.querySelectorAll('.sw').forEach(x=>x.dataset.active='false');
+    pal.forEach(x=>x.dataset.active='false');
     sw.dataset.active='true';
     current.color=sw.dataset.color;
     current.category=sw.dataset.category;
-    entryEl.style.borderLeft=`10px solid var(--${current.color})`;
+    entryEl.style.borderLeft = `10px solid var(--${current.color})`;
   });
 });
-document.querySelector('.sw').click();
+pal[0].click();
 
-const signinBtn=document.getElementById('signinBtn');
-const anonBtn=document.getElementById('anonBtn');
-const signoutBtn=document.getElementById('signoutBtn');
-const who=document.getElementById('who');
-const avatar=document.getElementById('avatar');
-const provider=new GoogleAuthProvider();
+// Auth
+const signinBtn = document.getElementById('signinBtn');
+const anonBtn = document.getElementById('anonBtn');
+const signoutBtn = document.getElementById('signoutBtn');
+const who = document.getElementById('who');
+const avatar = document.getElementById('avatar');
+const provider = new GoogleAuthProvider();
 
-signinBtn.onclick=()=>signInWithPopup(auth,provider).catch(e=>alert(e.message));
-anonBtn.onclick=()=>signInAnonymously(auth).then(({user})=>{
-  if(!user.displayName) updateProfile(user,{displayName:'Anónimo'});
-}).catch(e=>alert(e.message));
-signoutBtn.onclick=()=>signOut(auth);
+signinBtn.onclick = async ()=>{ try{ await signInWithPopup(auth,provider);}catch(e){alert(e.message)}};
+anonBtn.onclick = async ()=>{ 
+  try{
+    const { user } = await signInAnonymously(auth);
+    if(!user.displayName){await updateProfile(user,{displayName:'Anónimo'});}
+  }catch(e){alert(e.message);}
+};
+signoutBtn.onclick = ()=>signOut(auth);
 
-let unsub=null;
-function stopListening(){if(unsub){unsub();unsub=null;}}
+onAuthStateChanged(auth,user=>{
+  if(user){
+    signinBtn.style.display='none';
+    anonBtn.style.display='none';
+    signoutBtn.style.display='inline-block';
+    who.textContent=user.displayName||user.email||'Usuario';
+    avatar.src=user.photoURL||'';
+    avatar.style.display='inline-block';
+    startListening(user.uid);
+  }else{
+    who.textContent='';
+    avatar.removeAttribute('src');
+    avatar.style.display='none';
+    signinBtn.style.display='inline-block';
+    anonBtn.style.display='inline-block';
+    signoutBtn.style.display='none';
+    stopListening();
+    listEl.innerHTML='<div class="item" style="border-left-color:var(--blue)">Inicia sesión para ver/guardar tus notas en la nube.</div>';
+  }
+});
+
+function stopListening(){ if(unsub){unsub(); unsub=null;} }
 function startListening(uid){
   stopListening();
-  const ref=collection(db,'entries');
-  const qRef=query(ref,where('uid','==',uid),orderBy('createdAt','desc'));
-  unsub=onSnapshot(qRef,snap=>{
-    const all=snap.docs.map(d=>({id:d.id,...d.data()}));
+  const ref = collection(db,'entries');
+  const qRef = query(ref,where('uid','==',uid),orderBy('createdAt','desc'));
+  unsub = onSnapshot(qRef,snap=>{
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
     render(all);
   });
 }
 
-onAuthStateChanged(auth,user=>{
-  if(user){
-    signinBtn.style.display='none'; anonBtn.style.display='none'; signoutBtn.style.display='inline-block';
-    who.textContent=user.displayName||user.email||'Usuario';
-    avatar.src=user.photoURL||''; avatar.style.display='inline-block';
-    startListening(user.uid);
-  }else{
-    who.textContent=''; avatar.style.display='none';
-    signinBtn.style.display='inline-block'; anonBtn.style.display='inline-block'; signoutBtn.style.display='none';
-    stopListening();
-    listEl.innerHTML=`<div class="item">Inicia sesión para ver/guardar tus notas.</div>`;
-  }
-});
-
-saveBtn.onclick=async()=>{
-  const text=entryEl.value.trim(); if(!text){alert('Escribe algo');return;}
-  const user=auth.currentUser; if(!user){alert('Inicia sesión'); return;}
-  try{ await addDoc(collection(db,'entries'),{uid:user.uid,text,category:current.category,color:current.color,createdAt:serverTimestamp()}); entryEl.value=''; }catch(e){alert(e.message);}
+saveBtn.onclick = async ()=>{
+  const text = entryEl.value.trim();
+  if(!text){alert('Escribe algo antes de guardar'); return;}
+  const user = auth.currentUser; if(!user){alert('Inicia sesión primero'); return;}
+  try{
+    await addDoc(collection(db,'entries'),{
+      uid:user.uid,
+      text,
+      category:current.category,
+      color:current.color,
+      createdAt:serverTimestamp()
+    });
+    entryEl.value='';
+  }catch(e){alert('Error al guardar: '+e.message);}
 };
-clearBtn.onclick=()=>entryEl.value='';
+clearBtn.onclick = ()=>entryEl.value='';
 
 function render(data){
+  const filt = applyFilters(data);
   listEl.innerHTML='';
-  if(!data.length){listEl.innerHTML=`<div class="item">No hay notas.</div>`; return;}
-  data.forEach(e=>{
-    const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
-    const wrap=document.createElement('article');
-    wrap.className='item'; wrap.style.borderLeftColor=`var(--${e.color||'yellow'})`;
-    wrap.innerHTML=`<div class="meta"><span class="tag">${e.category}</span> · <time>${d.toLocaleString()}</time></div>
-      <div style="white-space:pre-wrap;margin-top:6px">${e.text}</div>`;
+  if(!filt.length){ listEl.innerHTML='<div class="item" style="border-left-color:var(--purple)">No hay notas para los filtros actuales.</div>'; return; }
+  for(const e of filt){
+    const date = e.createdAt?.toDate ? e.createdAt.toDate() : new Date();
+    const wrap = document.createElement('article');
+    wrap.className='item';
+    wrap.style.borderLeftColor = `var(--${e.color||'yellow'})`;
+    wrap.innerHTML = `<div class="meta"><span class="tag">${labelFromCat(e.category)}</span><span>·</span><time>${date.toLocaleString()}</time></div><div style="white-space:pre-wrap;margin-top:6px">${escapeHtml(e.text)}</div>`;
     listEl.appendChild(wrap);
+  }
+}
+
+function labelFromCat(c){return c==='comida'?'Amarillo · Comida':c==='deporte'?'Verde · Deporte':c==='sintomas_meds'?'Azul · Síntomas/medicación':'Lila · Síntomas EM';}
+function escapeHtml(str){return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+function applyFilters(list){
+  const from = fromDateEl.value ? new Date(fromDateEl.value) : null;
+  const to = toDateEl.value ? new Date(toDateEl.value+'T23:59:59') : null;
+  const cat = byCatEl.value || '';
+  const q = qEl.value.toLowerCase().trim();
+  return list.filter(e=>{
+    const d = e.createdAt?.toDate ? e.createdAt.toDate() : new Date();
+    if(from && d<from) return false;
+    if(to && d>to) return false;
+    if(cat && e.category!==cat) return false;
+    if(q && !e.text.toLowerCase().includes(q)) return false;
+    return true;
   });
 }
 
-// --- PDF ---
-downloadPdfBtn.onclick=async()=>{
-  const user=auth.currentUser; if(!user){alert('Inicia sesión');return;}
-  const colorFilter=pdfColorFilter.value;
-  const ref=collection(db,'entries');
-  const qRef=query(ref,where('uid','==',user.uid),orderBy('createdAt','desc'));
-  const snap=await getDocs(qRef);
-  let rows=snap.docs.map(d=>({id:d.id,...d.data()}));
-  if(colorFilter) rows=rows.filter(e=>e.color===colorFilter);
-
-  const { jsPDF } = window.jspdf;
-  const doc=new jsPDF();
-  let y=20;
-  const colorMap={yellow:[253,224,71],green:[134,239,172],blue:[147,197,253],purple:[233,213,255]};
-  rows.forEach(e=>{
-    const c=colorMap[e.color]||[200,200,200];
-    doc.setFillColor(...c); doc.rect(10,y-2,190,8,'F'); y+=10;
-    const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
-    doc.setTextColor(0,0,0);
-    doc.text(`${d.toLocaleString()} [${e.category}]`,12,y); y+=6;
-    const lines=doc.splitTextToSize(e.text,180);
-    doc.text(lines,12,y); y+=lines.length*6+6;
-    if(y>270){doc.addPage(); y=20;}
+[fromDateEl,toDateEl,byCatEl,qEl].forEach(el=>el.addEventListener('input',()=>{
+  const user = auth.currentUser; if(!user) return;
+  const ref = collection(db,'entries');
+  const qRef = query(ref,where('uid','==',user.uid),orderBy('createdAt','desc'));
+  getDocs(qRef).then(snap=>{
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    render(all);
   });
-  doc.save('MiDiario.pdf');
+}));
+
+resetFilters.onclick = ()=>{
+  fromDateEl.value=''; toDateEl.value=''; byCatEl.value=''; qEl.value='';
+  const user = auth.currentUser; if(!user) return;
+  const ref = collection(db,'entries');
+  const qRef = query(ref,where('uid','==',user.uid),orderBy('createdAt','desc'));
+  getDocs(qRef).then(snap=>{
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    render(all);
+  });
 };
 </script>
+
+<!-- jsPDF UMD -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="text/javascript">
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+downloadPdfBtn.onclick = async ()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const user = firebase.auth?.currentUser || null;
+  const ref = collection(db,'entries');
+  const qRef = query(ref, where('uid','==',auth.currentUser.uid), orderBy('createdAt','desc'));
+  const snap = await getDocs(qRef);
+  const colorFilter = document.getElementById('pdfColorFilter').value;
+  let y = 10;
+  snap.docs.forEach(d=>{
+    const e = d.data();
+    if(colorFilter && e.color!==colorFilter) return;
+    const date = e.createdAt?.toDate ? e.createdAt.toDate().toLocaleString() : '';
+    doc.setFillColor(e.color==='yellow'?253,224,71:e.color==='green'?134,239,172:e.color==='blue'?147,197,253:233,213,255);
+    doc.rect(10,y-2,190,10,'F');
+    doc.setTextColor(0);
+    doc.text(`${date} [${e.category}]`,10,y);
+    y+=6;
+    doc.text(e.text,10,y);
+    y+=12;
+    if(y>270){doc.addPage();y=10;}
+  });
+  doc.save('mi_diario_salud.pdf');
+}
+</script>
+
 </body>
 </html>
