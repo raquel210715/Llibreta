@@ -217,14 +217,12 @@ function applyFilters(list){
   const from = document.getElementById('fromDate').value?new Date(document.getElementById('fromDate').value):null;
   const to = document.getElementById('toDate').value?new Date(document.getElementById('toDate').value+'T23:59:59'):null;
   const cat = document.getElementById('byCat').value||'';
-  const col = document.getElementById('byColor').value||'';
   const q = document.getElementById('q').value.toLowerCase().trim();
   return list.filter(e=>{
     const d = e.createdAt?.toDate?e.createdAt.toDate():(e.createdAt?new Date(e.createdAt):null);
     if(from && (!d||d<from)) return false;
     if(to && (!d||d>to)) return false;
     if(cat && e.category!==cat) return false;
-    if(col && e.color!==col) return false;
     if(q && !e.text.toLowerCase().includes(q)) return false;
     return true;
   });
