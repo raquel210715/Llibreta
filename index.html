@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi Diario Salud (Cloud)</title>
-<meta name="color-scheme" content="light dark" />
+<meta name="color-scheme" content="light dark">
 <style>
+/* --- Estilos similares a los anteriores --- */
 :root{
   --bg:#f6f7fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --ring:#e5e7eb;
   --yellow:#fde047; --green:#86efac; --blue:#93c5fd; --purple:#e9d5ff;
@@ -50,7 +51,6 @@ footer{opacity:.6;font-size:12px;text-align:center;padding:20px;}
 </header>
 
 <main class="grid">
-  <!-- Composer -->
   <section class="card">
     <div class="palette">
       <div class="sw" data-color="yellow" data-category="comida" title="Amarillo · Comida"></div>
@@ -73,7 +73,6 @@ footer{opacity:.6;font-size:12px;text-align:center;padding:20px;}
     </div>
   </section>
 
-  <!-- Filters -->
   <section class="card filters">
     <input id="fromDate" type="date"/>
     <input id="toDate" type="date"/>
@@ -88,11 +87,11 @@ footer{opacity:.6;font-size:12px;text-align:center;padding:20px;}
     <button id="resetFilters" class="btn ghost">Reset</button>
   </section>
 
-  <!-- List -->
   <section class="card list" id="list"></section>
   <footer>Guardado en la nube con Firebase · Solo tú puedes ver tus registros.</footer>
 </main>
 
+<!-- jsPDF UMD -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -189,9 +188,8 @@ function render(data){
   });
 }
 
-// PDF
+// --- PDF ---
 downloadPdfBtn.onclick=async()=>{
-  const { jsPDF }=window.jspdf;
   const user=auth.currentUser; if(!user){alert('Inicia sesión');return;}
   const colorFilter=pdfColorFilter.value;
   const ref=collection(db,'entries');
@@ -199,7 +197,10 @@ downloadPdfBtn.onclick=async()=>{
   const snap=await getDocs(qRef);
   let rows=snap.docs.map(d=>({id:d.id,...d.data()}));
   if(colorFilter) rows=rows.filter(e=>e.color===colorFilter);
-  const doc=new jsPDF(); let y=20;
+
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF();
+  let y=20;
   const colorMap={yellow:[253,224,71],green:[134,239,172],blue:[147,197,253],purple:[233,213,255]};
   rows.forEach(e=>{
     const c=colorMap[e.color]||[200,200,200];
@@ -209,7 +210,7 @@ downloadPdfBtn.onclick=async()=>{
     doc.text(`${d.toLocaleString()} [${e.category}]`,12,y); y+=6;
     const lines=doc.splitTextToSize(e.text,180);
     doc.text(lines,12,y); y+=lines.length*6+6;
-    if(y>270){doc.addPage();y=20;}
+    if(y>270){doc.addPage(); y=20;}
   });
   doc.save('MiDiario.pdf');
 };
