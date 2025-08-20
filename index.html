@@ -1,228 +1,299 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mi Diario Salud (Cloud)</title>
-  <meta name="color-scheme" content="light dark" />
-  <style>
-    :root{
-      --bg:#f6f7fb; --card:#ffffff; --primary:#4a90e2;
-      --yellow:#fff9c4; --green:#c8e6c9; --blue:#bbdefb; --purple:#e1bee7;
-    }
-    body{font-family:sans-serif;margin:0;background:var(--bg);color:#333;}
-    header{display:flex;justify-content:space-between;align-items:center;
-      padding:10px 16px;background:var(--primary);color:white;}
-    header h1{font-size:18px;margin:0;}
-    #user-info{display:flex;align-items:center;gap:8px;}
-    .avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;}
-    main{max-width:800px;margin:0 auto;padding:16px;}
-    textarea{width:100%;min-height:80px;padding:8px;}
-    select,button,input[type=date]{padding:6px;margin:4px;}
-    .entry{background:var(--card);padding:8px;margin:8px 0;border-radius:8px;}
-    .yellow{background:var(--yellow);} .green{background:var(--green);}
-    .blue{background:var(--blue);} .purple{background:var(--purple);}
-    .filters{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
-    .actions{margin-top:10px;}
-    .entry-header{display:flex;justify-content:space-between;align-items:center;}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mi Diario Salud (Cloud)</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --ring:#e5e7eb;
+  --yellow:#fde047; --green:#86efac; --blue:#93c5fd; --purple:#e9d5ff;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0b1020; --card:#111827; --ink:#f3f4f6; --muted:#9ca3af; --ring:#1f2937; }
+}
+*{box-sizing:border-box}
+body{margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--ink);}
+header{position:sticky; top:0; z-index:10; background:var(--card); border-bottom:1px solid var(--ring); padding:10px 12px; display:flex; align-items:center; gap:12px;}
+.brand{font-weight:700; letter-spacing:.2px;}
+.spacer{flex:1}
+.btn{border:0; border-radius:12px; padding:10px 14px; background:#111827; color:#fff; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.btn.secondary{background:#374151}
+.btn.ghost{background:transparent; color:var(--ink)}
+.btn.icon{width:44px; height:44px; display:grid; place-items:center; border-radius:50%}
+.grid{max-width:960px; margin:20px auto; padding:0 14px}
+.card{background:var(--card); border:1px solid var(--ring); border-radius:18px; box-shadow:0 8px 30px rgba(2,8,20,0.05);}
+.composer{padding:16px}
+.row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+textarea{width:100%; min-height:120px; resize:vertical; padding:14px 16px; border-radius:14px; border:1px solid var(--ring); outline:none; font-size:16px; background:transparent}
+.palette{display:flex; gap:10px}
+.sw{width:36px; height:36px; border-radius:50%; border:2px solid #1112; cursor:pointer; position:relative}
+.sw[data-active="true"]::after{content:""; position:absolute; inset:8px; border-radius:50%; border:2px solid #0008}
+.sw[title*="Amarillo"]{background:var(--yellow)}
+.sw[title*="Verde"]{background:var(--green)}
+.sw[title*="Azul"]{background:var(--blue)}
+.sw[title*="Lila"]{background:var(--purple)}
+.actions{display:flex; gap:10px; justify-content:flex-end; padding:10px 0}
+.list{margin-top:18px; padding:8px}
+.item{border-left:10px solid transparent; padding:12px 14px; border-radius:14px; border:1px solid var(--ring); margin-bottom:12px; background:var(--card)}
+.meta{display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted)}
+.tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--ring);}
+.filters{padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+input[type="date"], select, input.search{padding:10px 12px; border-radius:10px; border:1px solid var(--ring); background:transparent; color:var(--ink)}
+footer{opacity:.6; font-size:12px; text-align:center; padding:20px}
+</style>
 </head>
 <body>
-  <header>
-    <h1>Mi Diario Salud</h1>
-    <div id="user-info">
-      <img id="user-pic" class="avatar" src="" alt="" hidden>
-      <span id="user-name"></span>
-      <button id="login">Iniciar sesión</button>
-      <button id="logout" hidden>Salir</button>
+<header>
+  <div class="brand">📒 Mi Diario Salud</div>
+  <div class="spacer"></div>
+  <div class="login">
+    <img id="avatar" class="avatar" alt="" />
+    <span id="who" class="muted"></span>
+    <button id="signinBtn" class="btn secondary">Entrar con Google</button>
+    <button id="anonBtn" class="btn ghost">Entrar anónimo</button>
+    <button id="signoutBtn" class="btn" style="display:none">Salir</button>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- Composer -->
+  <section class="card composer" aria-label="Editor de entrada">
+    <div class="row" style="justify-content:space-between">
+      <div class="palette" role="group" aria-label="Categorías">
+        <div class="sw" id="sw-yellow" title="Amarillo · Comida" data-color="yellow" data-category="comida"></div>
+        <div class="sw" id="sw-green" title="Verde · Deporte" data-color="green" data-category="deporte"></div>
+        <div class="sw" id="sw-blue" title="Azul · Síntomas/medicación" data-color="blue" data-category="sintomas_meds"></div>
+        <div class="sw" id="sw-purple" title="Lila · Síntomas EM" data-color="purple" data-category="sintomas_em"></div>
+      </div>
+      <div class="row">
+        <button id="downloadTxtBtn" class="btn secondary" title="Descargar TXT">📄 TXT</button>
+        <button id="downloadPdfBtn" class="btn secondary" title="Descargar PDF">📄 PDF</button>
+      </div>
     </div>
-  </header>
-  <main>
-    <section>
-      <textarea id="text" placeholder="Escribe aquí..."></textarea><br/>
-      <select id="category">
-        <option value="yellow">Ánimo</option>
-        <option value="green">Salud</option>
-        <option value="blue">Ejercicio</option>
-        <option value="purple">Otro</option>
-      </select>
-      <button id="save">Guardar</button>
-    </section>
+    <textarea id="entry" placeholder="Escribe aquí..."></textarea>
+    <div class="actions">
+      <button id="saveBtn" class="btn">Guardar</button>
+      <button id="clearBtn" class="btn ghost">Limpiar</button>
+    </div>
+  </section>
 
-    <section class="filters">
-      <label>Desde <input type="date" id="fromDate"></label>
-      <label>Hasta <input type="date" id="toDate"></label>
-      <select id="byCategory">
-        <option value="">Todas las categorías</option>
-        <option value="yellow">Ánimo</option>
-        <option value="green">Salud</option>
-        <option value="blue">Ejercicio</option>
-        <option value="purple">Otro</option>
-      </select>
-      <input type="text" id="searchText" placeholder="Buscar texto">
-      <button id="applyFilters">Aplicar filtros</button>
-    </section>
+  <!-- Filters -->
+  <section class="card filters">
+    <input id="fromDate" type="date" />
+    <input id="toDate" type="date" />
+    <select id="byCat">
+      <option value="">Todas las categorías</option>
+      <option value="comida">Amarillo · Comida</option>
+      <option value="deporte">Verde · Deporte</option>
+      <option value="sintomas_meds">Azul · Síntomas/medicación</option>
+      <option value="sintomas_em">Lila · Síntomas EM</option>
+    </select>
+    <select id="byColor">
+      <option value="">Todos los colores</option>
+      <option value="yellow">Amarillo</option>
+      <option value="green">Verde</option>
+      <option value="blue">Azul</option>
+      <option value="purple">Lila</option>
+    </select>
+    <input id="q" class="search" type="search" placeholder="Buscar texto..." />
+    <button id="applyFiltersBtn" class="btn ghost">Procesar</button>
+  </section>
 
-    <section class="actions">
-      <button id="downloadTxt">Descargar TXT</button>
-      <button id="downloadPdf">Descargar PDF</button>
-    </section>
+  <!-- List -->
+  <section class="card list" id="list"></section>
 
-    <section id="entries"></section>
-  </main>
+  <footer>Guardado en la nube con Firebase · Funciona offline y sincroniza cuando vuelves a tener conexión.</footer>
+</main>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_BUCKET",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID"
+};
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, getDocs, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyXXXXXXX",
-    authDomain: "XXXX.firebaseapp.com",
-    projectId: "XXXX",
-    storageBucket: "XXXX.appspot.com",
-    messagingSenderId: "XXXX",
-    appId: "XXXX"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+enableIndexedDbPersistence(db).catch(()=>{});
 
-  const loginBtn=document.getElementById('login');
-  const logoutBtn=document.getElementById('logout');
-  const userPic=document.getElementById('user-pic');
-  const userName=document.getElementById('user-name');
+const entryEl = document.getElementById('entry');
+const listEl = document.getElementById('list');
+const saveBtn = document.getElementById('saveBtn');
+const clearBtn = document.getElementById('clearBtn');
+const downloadTxtBtn = document.getElementById('downloadTxtBtn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+const pal = Array.from(document.querySelectorAll('.sw'));
+let current = { color:'yellow', category:'comida' };
+let unsub = null;
 
-  loginBtn.onclick=()=>{ 
-    const provider=new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider);
-  };
-  logoutBtn.onclick=()=>auth.signOut();
-
-  auth.onAuthStateChanged(user=>{
-    if(user){
-      userPic.src=user.photoURL; userPic.hidden=false;
-      userName.textContent=user.displayName;
-      loginBtn.hidden=true; logoutBtn.hidden=false;
-      loadEntries();
-    }else{
-      userPic.hidden=true; userName.textContent='';
-      loginBtn.hidden=false; logoutBtn.hidden=true;
-      document.getElementById('entries').innerHTML='';
-    }
+pal.forEach(sw => {
+  sw.addEventListener('click', ()=>{ 
+    pal.forEach(x=>x.dataset.active='false');
+    sw.dataset.active='true';
+    current.color=sw.dataset.color;
+    current.category=sw.dataset.category;
+    entryEl.style.borderLeft=`10px solid var(--${current.color})`;
   });
+});
+pal[0].click();
 
-  document.getElementById('save').onclick=async ()=>{
-    const text=document.getElementById('text').value;
-    const category=document.getElementById('category').value;
-    const user=auth.currentUser;
-    if(!user||!text) return;
-    await db.collection('entries').add({
-      uid:user.uid, text, category, color:category,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+const signinBtn = document.getElementById('signinBtn');
+const anonBtn = document.getElementById('anonBtn');
+const signoutBtn = document.getElementById('signoutBtn');
+const who = document.getElementById('who');
+const avatar = document.getElementById('avatar');
+const provider = new GoogleAuthProvider();
+
+signinBtn.onclick = async ()=>{ try{ await signInWithPopup(auth, provider);}catch(e){alert(e.message);} };
+anonBtn.onclick = async ()=>{ try{ const {user}=await signInAnonymously(auth); if(!user.displayName) await updateProfile(user,{displayName:'Anónimo'});}catch(e){alert(e.message);} };
+signoutBtn.onclick = ()=>signOut(auth);
+
+onAuthStateChanged(auth, user=>{
+  if(user){
+    signinBtn.style.display='none';
+    anonBtn.style.display='none';
+    signoutBtn.style.display='inline-block';
+    who.textContent=user.displayName||user.email||'Usuario';
+    avatar.src=user.photoURL||'';
+    startListening(user.uid);
+  }else{
+    who.textContent='';
+    avatar.removeAttribute('src');
+    signinBtn.style.display='inline-block';
+    anonBtn.style.display='inline-block';
+    signoutBtn.style.display='none';
+    stopListening();
+    listEl.innerHTML='<div class="item" style="border-left-color:var(--blue)">Inicia sesión para ver/guardar tus notas en la nube.</div>';
+  }
+});
+
+function stopListening(){ if(unsub){unsub();unsub=null;} }
+
+function startListening(uid){
+  stopListening();
+  const ref = collection(db,'entries');
+  const qRef = query(ref, where('uid','==',uid), orderBy('createdAt','desc'));
+  unsub = onSnapshot(qRef, snap=>{
+    const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    render(all);
+  });
+}
+
+saveBtn.onclick=async ()=>{
+  const text = entryEl.value.trim();
+  if(!text){ alert('Escribe algo antes de guardar'); return; }
+  const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
+  try{
+    await addDoc(collection(db,'entries'),{
+      uid:user.uid,
+      text,
+      category:current.category,
+      color:current.color,
+      createdAt:serverTimestamp()
     });
-    document.getElementById('text').value='';
-    loadEntries();
-  };
+    entryEl.value='';
+  }catch(e){alert('Error al guardar: '+e.message);}
+};
 
-  async function loadEntries(){
-    const user=auth.currentUser; if(!user) return;
-    const snap=await db.collection('entries').where('uid','==',user.uid).orderBy('createdAt','desc').get();
-    const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderEntries(arr);
+clearBtn.onclick=()=>entryEl.value='';
+
+function labelFromCat(c){return c==='comida'?'Amarillo · Comida':c==='deporte'?'Verde · Deporte':c==='sintomas_meds'?'Azul · Síntomas/medicación':'Lila · Síntomas EM';}
+
+function toLocal(ts){ if(!ts) return {iso:'', pretty:'(sin fecha)'}; const d=ts.toDate?ts.toDate():new Date(ts); return {iso:d.toISOString(), pretty:d.toLocaleString()}; }
+
+function escapeHtml(str){return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+
+function applyFilters(list){
+  const from = document.getElementById('fromDate').value?new Date(document.getElementById('fromDate').value):null;
+  const to = document.getElementById('toDate').value?new Date(document.getElementById('toDate').value+'T23:59:59'):null;
+  const cat = document.getElementById('byCat').value||'';
+  const col = document.getElementById('byColor').value||'';
+  const q = document.getElementById('q').value.toLowerCase().trim();
+  return list.filter(e=>{
+    const d = e.createdAt?.toDate?e.createdAt.toDate():(e.createdAt?new Date(e.createdAt):null);
+    if(from && (!d||d<from)) return false;
+    if(to && (!d||d>to)) return false;
+    if(cat && e.category!==cat) return false;
+    if(col && e.color!==col) return false;
+    if(q && !e.text.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function render(data){
+  const filt = applyFilters(data);
+  listEl.innerHTML='';
+  if(!filt.length){ listEl.innerHTML='<div class="item" style="border-left-color:var(--purple)">No hay notas para los filtros actuales.</div>'; return; }
+  for(const e of filt){
+    const date = toLocal(e.createdAt);
+    const wrap=document.createElement('article');
+    wrap.className='item';
+    wrap.style.borderLeftColor=`var(--${e.color||'yellow'})`;
+    wrap.innerHTML=`
+      <div class="meta">
+        <span class="tag">${labelFromCat(e.category)}</span>
+        <span>·</span>
+        <time datetime="${date.iso}">${date.pretty}</time>
+      </div>
+      <div style="white-space:pre-wrap; margin-top:6px">${escapeHtml(e.text)}</div>
+    `;
+    listEl.appendChild(wrap);
   }
+}
 
-  function renderEntries(entries){
-    const cont=document.getElementById('entries');
-    cont.innerHTML='';
-    const filtered=applyFilters(entries);
-    filtered.forEach(e=>{
-      const div=document.createElement('div');
-      div.className='entry '+e.category;
-      const date=e.createdAt?.toDate?e.createdAt.toDate():new Date();
-      div.innerHTML=`
-        <div class="entry-header">
-          <small>${date.toLocaleString()} - ${labelFromCat(e.category)}</small>
-          <button onclick="deleteEntry('${e.id}')">🗑</button>
-        </div>
-        <div>${e.text}</div>`;
-      cont.appendChild(div);
-    });
+document.getElementById('applyFiltersBtn').onclick=()=>startListening(auth.currentUser?.uid);
+
+downloadTxtBtn.onclick=async ()=>{
+  const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
+  const ref = collection(db,'entries');
+  const snap = await getDocs(query(ref, where('uid','==',user.uid), orderBy('createdAt','desc')));
+  const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const lines = rows.map(e=>`[${toLocal(e.createdAt).pretty}] (${labelFromCat(e.category)})\n${e.text}\n`);
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mi_diario_salud.txt'; a.click(); URL.revokeObjectURL(a.href);
+};
+
+downloadPdfBtn.onclick=async ()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 10;
+  const user = auth.currentUser; if(!user){ alert('Inicia sesión primero'); return; }
+  const ref = collection(db,'entries');
+  const snap = await getDocs(query(ref, where('uid','==',user.uid), orderBy('createdAt','desc')));
+  const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  for(const e of rows){
+    const d = toLocal(e.createdAt).iso?new Date(toLocal(e.createdAt).iso):new Date();
+    doc.setTextColor(...colorHexToRGB(e.color));
+    doc.text(`[${d.toLocaleString()}] (${labelFromCat(e.category)})`, 12, y);
+    y += 8;
+    const splitText = doc.splitTextToSize(e.text, 180);
+    doc.text(splitText, 12, y);
+    y += splitText.length*8 + 6;
+    if(y>270){doc.addPage(); y=10;}
   }
+  doc.save('mi_diario_salud.pdf');
+};
 
-  async function deleteEntry(id){
-    if(confirm("¿Eliminar entrada?")){
-      await db.collection('entries').doc(id).delete();
-      loadEntries();
-    }
+function colorHexToRGB(color){
+  switch(color){
+    case 'yellow': return [253,224,71];
+    case 'green': return [134,239,172];
+    case 'blue': return [147,197,253];
+    case 'purple': return [233,213,255];
+    default: return [0,0,0];
   }
-
-  function labelFromCat(c){
-    return {yellow:'Ánimo',green:'Salud',blue:'Ejercicio',purple:'Otro'}[c]||c;
-  }
-
-  // === FILTROS ===
-  function applyFilters(entries){
-    const from=document.getElementById('fromDate').value;
-    const to=document.getElementById('toDate').value;
-    const cat=document.getElementById('byCategory').value;
-    const text=document.getElementById('searchText').value.toLowerCase();
-    return entries.filter(e=>{
-      const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
-      if(from && d<new Date(from)) return false;
-      if(to && d>new Date(to+'T23:59')) return false;
-      if(cat && e.category!==cat) return false;
-      if(text && !e.text.toLowerCase().includes(text)) return false;
-      return true;
-    });
-  }
-  document.getElementById('applyFilters').onclick=loadEntries;
-
-  // === DESCARGAS ===
-  document.getElementById('downloadTxt').onclick=async ()=>{
-    const user=auth.currentUser; if(!user) return;
-    const snap=await db.collection('entries').where('uid','==',user.uid).orderBy('createdAt','desc').get();
-    const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
-    const rows=applyFilters(arr);
-    const lines=rows.map(e=>{
-      const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
-      return `[${d.toLocaleString()}] (${labelFromCat(e.category)})\n${e.text}\n`;
-    });
-    const blob=new Blob([lines.join('\n')],{type:'text/plain'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob); a.download='mi_diario_salud.txt';
-    a.click(); URL.revokeObjectURL(a.href);
-  };
-
-  document.getElementById('downloadPdf').onclick=async ()=>{
-    const { jsPDF } = window.jspdf;
-    const doc=new jsPDF();
-    let y=10;
-    const user=auth.currentUser; if(!user) return;
-    const snap=await db.collection('entries').where('uid','==',user.uid).orderBy('createdAt','desc').get();
-    const arr=snap.docs.map(d=>({id:d.id,...d.data()}));
-    const rows=applyFilters(arr);
-
-    for(const e of rows){
-      const d=e.createdAt?.toDate?e.createdAt.toDate():new Date();
-      const color=colorHexToRGB(e.color);
-      doc.setTextColor(...color);
-      doc.text(`[${d.toLocaleString()}] (${labelFromCat(e.category)})`,12,y);
-      y+=8;
-      const split=doc.splitTextToSize(e.text,180);
-      doc.text(split,12,y);
-      y+=split.length*8+6;
-      if(y>270){doc.addPage();y=10;}
-    }
-    doc.save('mi_diario_salud.pdf');
-  };
-
-  function colorHexToRGB(c){
-    const map={yellow:[247,202,24],green:[76,175,80],blue:[33,150,243],purple:[156,39,176]};
-    return map[c]||[0,0,0];
-  }
-  </script>
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </body>
 </html>
