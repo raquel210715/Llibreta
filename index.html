@@ -13,6 +13,13 @@
 @media (prefers-color-scheme: dark){
   :root{ --bg:#0b1020; --card:#111827; --ink:#f3f4f6; --muted:#9ca3af; --ring:#1f2937; }
 }
+.avatar{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
 *{box-sizing:border-box}
 body{margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--ink);}
 header{position:sticky; top:0; z-index:10; background:var(--card); border-bottom:1px solid var(--ring); padding:10px 12px; display:flex; align-items:center; gap:12px;}
